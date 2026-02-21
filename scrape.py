@@ -38,7 +38,10 @@ x = inputlinks[inputlinks.index == 10]
 for index, row in x.iterrows():
     print(row["links"])
     page = requests.get(row["links"])
-    parsed_html = BeautifulSoup(page.text)
+
+    x.loc[index, "raw_html"] = page.text
+
+    parsed_html = BeautifulSoup(page.text, "html.parser")
 
     # <meta content="9/10" property="article:tag"/>; question if this is universal. One approach would be to extract these via regex
     rating = None
@@ -48,8 +51,13 @@ for index, row in x.iterrows():
             rating = content
             break
     x.loc[index, "rating"] = rating
-    
 
+    review_text = parsed_html.find("div", {"class":"post_content"}).text
+    print(review_text)
+    x.loc[index, "review_text"] = review_text
+    
+x
+print(x.review_text.iloc[0])
 
 
 # %%
