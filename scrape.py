@@ -4,6 +4,7 @@ import pandas as pd
 import xmltodict
 from bs4 import BeautifulSoup
 import re
+import time
 
 # paths
 # path_input = "/home/paul/Documents/TextReviewer/Input/sitemap-posts.xml"
@@ -32,32 +33,42 @@ inputlinks = inputlinks[inputlinks["lastmod"] > "2024-07-31"]
 inputlinks.reset_index(drop = True, inplace = True)
 
 
+### SCRAPING START ###
+
 # %% Test request and HTML parsing
-x = inputlinks[inputlinks.index == 10]
+# inputlinks = inputlinks[inputlinks.index == 10]
+output = inputlinks.copy() # copies the links list to be extended with relevant information
 
-for index, row in x.iterrows():
-    print(row["links"])
-    page = requests.get(row["links"])
+for index, row in inputlinks.iterrows():
+    response = requests.get(row["links"], timeout=2)
 
-    x.loc[index, "raw_html"] = page.text
+    time.sleep(0.5)
 
-    parsed_html = BeautifulSoup(page.text, "html.parser")
+    output.loc[index, "status_code"] = response.status_code
+    print(f"Working on link {index} out of {len(inputlinks)}, response code {response.status_code}")
 
-    # <meta content="9/10" property="article:tag"/>; question if this is universal. One approach would be to extract these via regex
-    rating = None
-    for tag in parsed_html.find_all("meta", property="article:tag"):
-        content = tag.get("content", "")
-        if re.fullmatch(r"\d+/10", content):
-            rating = content
-            break
-    x.loc[index, "rating"] = rating
+    if response: # Note: "response automatically converts to boolean TRUE if successful (<400), and FALSE for unsuccessful"
+        output.loc[index, "raw_html"] = response.text
+        parsed_html = BeautifulSoup(response.text, "html.parser")
 
-    review_text = parsed_html.find("div", {"class":"post_content"}).text
-    print(review_text)
-    x.loc[index, "review_text"] = review_text
-    
-x
-print(x.review_text.iloc[0])
+        # <meta content="9/10" property="article:tag"/>; question if this is universal. One approach would be to extract these via regex
+        rating = None
+        for tag in parsed_html.find_all("meta", property="article:tag"):
+            content = tag.get("content", "")
+            if re.fullmatch(r"\d+/10", content):
+                rating = content
+                break
+        output.loc[index, "rating"] = rating
 
+        review_text = parsed_html.find("div", {"class":"post_content"}).text
+        output.loc[index, "review_text"] = review_text
+    else:
+        print(response.headers)
+        raise Exception(f"Non-success status code: {response.status_code}")
+
+output
+#print(output.review_text.iloc[0])
+
+output.to_csv("/home/paul/scraped_results.csv", index=False)
 
 # %%
