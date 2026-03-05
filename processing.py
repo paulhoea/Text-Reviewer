@@ -7,6 +7,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+from nltk.corpus import wordnet as wn
 
 # read scraped data
 df = pd.read_csv("/home/paul/scraped_results.csv")
@@ -25,10 +26,10 @@ fulltext = " ".join(df["review_text"].dropna())
 fulltext = nltk.Text(nltk.word_tokenize(fulltext))
 
 # %%
-outlist = list()
+tokenized_reviews = list()
 
 for index, row in df.iterrows():
-    tokens = nltk.wordpunct_tokenize(row["review_text"]) # instead of word_tokenize, to keep things like "Internet's" from splitting
+    tokens = nltk.wordpunct_tokenize(row["review_text"].lower()) # instead of word_tokenize, to keep things like "Internet's" from splitting
     
     filtered_tokens = [word for word in tokens if word not in stop_words]
     filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
@@ -36,22 +37,39 @@ for index, row in df.iterrows():
     # ? Keep ? - splits the 's from things like "Internet's", test once I have more of a feel for it
     lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_tokens]
 
-    outframe = pd.DataFrame({'word': lemmatized_words, 'rating': row["rating"], 'source': row["links"]})
+    tmp_review_df = pd.DataFrame({'word': lemmatized_words, 'rating': row["rating"], 'source': row["links"]})
 
-    outlist.append(outframe)
+    tokenized_reviews.append(tmp_review_df)
 
-text_frame = pd.concat(outlist)
+tokens_df = pd.concat(tokenized_reviews)
 
-# %%
+# %% TODO: explore this further, after identifying instruments for example
 fulltext.concordance("rattling")
+fulltext.concordance("mix")
+fulltext.concordance("mixing")
+
+
+# %% find instruments in the text
+def get_instrument_synsets():
+    """Get all hyponyms of 'musical instrument' from WordNet."""
+    instrument_synset = wn.synset("musical_instrument.n.01")
+    hyponyms = instrument_synset.closure(lambda s: s.hyponyms())
+    return {lemma.name().lower().replace("_", " ")
+            for synset in hyponyms
+            for lemma in synset.lemmas()}
+
+instruments = get_instrument_synsets()
+
 
 # %%
+# circle shape for the wordcloud
 x, y = np.ogrid[:300, :300]
 mask = (x - 150) ** 2 + (y - 150) ** 2 > 130 ** 2
 mask = 255 * mask.astype(int)
 
+# generate wordcloud
 wc = WordCloud(background_color="white", repeat=True, mask=mask)
-wc.generate(" ".join(text_frame["word"].dropna()))
+wc.generate(" ".join(tokens_df["word"].dropna()))
 
 plt.axis("off")
 plt.imshow(wc, interpolation="bilinear")
@@ -59,8 +77,15 @@ plt.suptitle("All ratings", fontsize=14)
 plt.show()
 
 # %%
+# Filtering out the top ten words after main wordcloud, to get more differentiated results
 
-for key, group_df in text_frame.groupby("rating"):
+top_words = tokens_df["word"].value_counts().head(10).index
+tokens_df = tokens_df[~tokens_df["word"].isin(top_words)]
+
+# %%
+
+# generate wordcloud for each score category from 0/10 to 10/10
+for key, group_df in tokens_df.groupby("rating"):
     wc = WordCloud(background_color="white", repeat=True, mask=mask)
     wc.generate(" ".join(group_df["word"].dropna()))
 
