@@ -13,6 +13,7 @@ from nltk.corpus import wordnet as wn
 df = pd.read_csv("/home/paul/scraped_results.csv")
 df["rating"] = df["rating"].str.split("/").str[0]
 df["rating"] = pd.to_numeric(df["rating"]).astype('Int64')
+df.dropna(subset=["rating"], inplace=True)
 
 # define stopwords and punctutation to remove
 stop_words = set(stopwords.words('english'))
@@ -76,7 +77,53 @@ plt.imshow(wc, interpolation="bilinear")
 plt.suptitle("All ratings", fontsize=14)
 plt.show()
 
-# %%
+
+# %% TODO: apply new filtering
+
+tokens_df['rating'].unique()
+
+def find_common_top_words(tokens_df, top_n=10):
+    """
+    Find words that appear in the top `top_n` most frequent words across groups
+    
+    Returns:
+        DataFrame with words and the number of groups they appear in
+    """
+    groups = tokens_df['rating'].unique()
+    
+    # For each group, get the top N words by frequency
+    top_words_per_group = {}
+    for group in groups:
+        group_df = tokens_df[tokens_df['rating'] == group]
+        top_words = (
+            group_df['word']
+            .value_counts()
+            .head(top_n)
+            .index
+            .tolist()
+        )
+        top_words_per_group[group] = set(top_words)
+    
+    # Count how many groups each word appears in
+    all_top_words = [word for words in top_words_per_group.values() for word in words]
+    word_group_counts = pd.Series(all_top_words).value_counts()
+    
+    return word_group_counts
+
+find_common_top_words(tokens_df, top_n=10)
+
+
+
+
+
+
+
+
+
+
+
+
+# %% TODO: REPLACE
 # Filtering out the top ten words after main wordcloud, to get more differentiated results
 
 top_words = tokens_df["word"].value_counts().head(10).index
