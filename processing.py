@@ -78,56 +78,23 @@ plt.suptitle("All ratings", fontsize=14)
 plt.show()
 
 
-# %% TODO: apply new filtering
 
-tokens_df['rating'].unique()
+# %% 
+# Filtering out the words that are in teh top ten of more than half the list after main wordcloud, to get more differentiated results
 
-def find_common_top_words(tokens_df, top_n=10):
-    """
-    Find words that appear in the top `top_n` most frequent words across groups
-    
-    Returns:
-        DataFrame with words and the number of groups they appear in
-    """
-    groups = tokens_df['rating'].unique()
-    
-    # For each group, get the top N words by frequency
-    top_words_per_group = {}
-    for group in groups:
-        group_df = tokens_df[tokens_df['rating'] == group]
-        top_words = (
-            group_df['word']
-            .value_counts()
-            .head(top_n)
-            .index
-            .tolist()
-        )
-        top_words_per_group[group] = set(top_words)
-    
-    # Count how many groups each word appears in
-    all_top_words = [word for words in top_words_per_group.values() for word in words]
-    word_group_counts = pd.Series(all_top_words).value_counts()
-    
-    return word_group_counts
+top_words_by_group = []
 
-find_common_top_words(tokens_df, top_n=10)
+for key, group_df in tokens_df.groupby("rating"):
+    top_words_in_group = group_df[["word", "rating"]].value_counts().head(10).reset_index()
+    top_words_by_group.append(top_words_in_group)
+
+top_words = pd.concat(top_words_by_group)
+top_words = top_words["word"].value_counts().reset_index()
+top_words = top_words[top_words["count"] > 5]
 
 
-
-
-
-
-
-
-
-
-
-
-# %% TODO: REPLACE
-# Filtering out the top ten words after main wordcloud, to get more differentiated results
-
-top_words = tokens_df["word"].value_counts().head(10).index
-tokens_df = tokens_df[~tokens_df["word"].isin(top_words)]
+# %% 
+tokens_df = tokens_df[~tokens_df["word"].isin(top_words["word"])]
 
 # %%
 
