@@ -32,6 +32,7 @@ inputlinks = inputlinks[inputlinks["lastmod"] > "2024-07-31"]
 # reset index for further processing
 inputlinks.reset_index(drop = True, inplace = True)
 
+# inputlinks = inputlinks.iloc[1:4]
 
 ### SCRAPING START ###
 
@@ -52,6 +53,10 @@ for index, row in inputlinks.iterrows():
         parsed_html = BeautifulSoup(response.text, "html.parser")
 
         # <meta content="9/10" property="article:tag"/>; question if this is universal. One approach would be to extract these via regex
+        site_title = None
+        site_title = parsed_html.title.string
+        output.loc[index, "site_title"] = site_title
+        
         rating = None
         for tag in parsed_html.find_all("meta", property="article:tag"):
             content = tag.get("content", "")
