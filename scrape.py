@@ -32,15 +32,19 @@ inputlinks = inputlinks[inputlinks["lastmod"] > "2024-07-31"]
 # reset index for further processing
 inputlinks.reset_index(drop = True, inplace = True)
 
-inputlinks = inputlinks.iloc[1:4]
+
 
 ### SCRAPING START ###
 
-# %% Test request and HTML parsing
+# %% Scrape pages and process into df
+
+# for easy testing
+# inputlinks = inputlinks.iloc[1:4]
+
 output = inputlinks.copy() # copies the links list to be extended with relevant information
 
 for index, row in inputlinks.iterrows():
-    response = requests.get(row["links"], timeout=2)
+    response = requests.get(row["links"], timeout=10)
 
     time.sleep(0.5)
 
@@ -70,9 +74,9 @@ for index, row in inputlinks.iterrows():
         print(response.headers)
         raise Exception(f"Non-success status code: {response.status_code}")
 
+# %%
 # split Artist and Album title from site_title
 output[["artist", "album"]] = pd.DataFrame(output["site_title"].str.split(" - ", expand=True))
-
 output
 
 # %% score assignment fallback
@@ -91,3 +95,4 @@ output[output["rating"].isna() & (output["rating_text"].apply(len) == 0)]
 
 # %% save output
 output.to_csv("/home/paul/scraped_results.csv", index=False)
+# %%
