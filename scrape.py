@@ -32,12 +32,11 @@ inputlinks = inputlinks[inputlinks["lastmod"] > "2024-07-31"]
 # reset index for further processing
 inputlinks.reset_index(drop = True, inplace = True)
 
-# inputlinks = inputlinks.iloc[1:4]
+inputlinks = inputlinks.iloc[1:4]
 
 ### SCRAPING START ###
 
 # %% Test request and HTML parsing
-# inputlinks = inputlinks[inputlinks.index == 10]
 output = inputlinks.copy() # copies the links list to be extended with relevant information
 
 for index, row in inputlinks.iterrows():
@@ -71,9 +70,24 @@ for index, row in inputlinks.iterrows():
         print(response.headers)
         raise Exception(f"Non-success status code: {response.status_code}")
 
+# split Artist and Album title from site_title
+output[["artist", "album"]] = pd.DataFrame(output["site_title"].str.split(" - ", expand=True))
+
 output
-#print(output.review_text.iloc[0])
 
+# %% score assignment fallback
+
+# Define the pattern to identify scores in-text
+keywords = r'(?:light|decent|strong)'
+numbers = r'(?:one|two|three|four|five|six|seven|eight|nine|ten|[1-9]|10)'
+
+pattern = rf'\b({keywords}(?:\s+to\s+{keywords})?\s+{numbers})\b'
+
+# Extract matches (returns first match per review; use findall for multiple)
+output["rating_text"] = output["review_text"].str.findall(pattern, flags=re.IGNORECASE)
+
+# leaves 30 completely empty rows, which are CLASSIC/10 or non-scored albums, and can be safely excluded
+output[output["rating"].isna() & (output["rating_text"].apply(len) == 0)]
+
+# %% save output
 output.to_csv("/home/paul/scraped_results.csv", index=False)
-
-# %%
