@@ -52,9 +52,7 @@ df.dropna(subset=["rating"], inplace=True)
 
 # %%
 fulltext = " ".join(df["review_text"].dropna())
-fulltext = nltk.Text(nltk.word_tokenize(fulltext))
 
-# %%
 tokenized_reviews = list()
 
 for index, row in df.iterrows():
@@ -78,3 +76,8 @@ for index, row in df.iterrows():
 
 tokens_df = pd.concat(tokenized_reviews)
 
+# %%
+tokens_df.to_csv("/home/paul/tokens_df.csv", index=False)
+with open("/home/paul/fulltext.txt", "w") as text_file:
+    text_file.write(fulltext)
+# %%
