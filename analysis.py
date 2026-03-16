@@ -1,22 +1,67 @@
-# %% TODO: explore this further
-# fulltext.concordance("mix") # note: full text is not lemmatized
-# fulltext.concordance("mixing")
+# %%
+import pandas as pd
+import numpy as np
+import nltk
+import string
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
+from wordcloud import WordCloud
+from nltk.corpus import wordnet as wn
+from PIL import Image, ImageDraw, ImageFont
+from pyfonts import load_google_font
+import re
+from textwrap import wrap
 
-# search for variations of "mixing"
-wildcard_pattern = r'\bmix(ing|es|er|s)?\b'
-width = 5  # tokens of context either side
+# %% import processed data
+with open("/home/paul/fulltext.txt", "r", encoding="utf-8") as file:
+        fulltext = file.read()
+fulltext = nltk.Text(nltk.word_tokenize(fulltext))
+tokens_df = pd.read_csv("/home/paul/tokens_df.csv")
+
+# define stopwords and punctutation to remove
+stop_words = set(stopwords.words('english'))
+punctuations = list(string.punctuation)
+punctuations.append("''")
+lemmatizer = WordNetLemmatizer()
+
+# %%
+# search for variations of "mixing"´
+input_words = ["mixing", "the mix"]
+width = 7  # tokens of context either side
 
 # Find indices of matching tokens
-match_indices = [i for i, word in enumerate(fulltext.tokens) 
-                 if re.search(wildcard_pattern, word, re.IGNORECASE)]
+single_words = set(w.lower() for w in input_words if len(w.split()) == 1)
+phrases = [p.lower().split() for p in input_words if len(p.split()) > 1]
+
+tokens_lower = [t.lower() for t in fulltext.tokens]
+
+# Single word matches
+match_indices = [i for i, word in enumerate(tokens_lower)
+                 if word in single_words]
+
+# Phrase matches — index points to the first token of the phrase
+for phrase in phrases:
+    phrase_len = len(phrase)
+    for i in range(len(tokens_lower) - phrase_len + 1):
+        if tokens_lower[i:i+phrase_len] == phrase:
+            match_indices.append(i)
+
+match_indices = sorted(set(match_indices))
 
 # Print concordance-style output
+print(f"{len(match_indices)} total results")
 print(f"{'LEFT CONTEXT':>50}  {'MATCH':<10}  {'RIGHT CONTEXT'}")
 print("-" * 80)
 for i in match_indices:
+    # figure out how long the match is
+    match_len = next(
+        (len(p) for p in phrases if tokens_lower[i:i+len(p)] == p), 1
+    )
     left = fulltext.tokens[max(0, i-width):i]
-    match = fulltext.tokens[i]
-    right = fulltext.tokens[i+1:i+width+1]
+    match = ' '.join(fulltext.tokens[i:i+match_len])
+    right = fulltext.tokens[i+match_len:i+match_len+width]
     
     left_str = ' '.join(left).rjust(50)
     right_str = ' '.join(right)
@@ -36,7 +81,6 @@ for result in concordance_results:
     # remove stopwords
     filtered_tokens = [word for word in tokens if word not in stop_words]
     filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
-    filtered_tokens = [word for word in filtered_tokens if word not in name_words]
 
     # remove original search word
     filtered_tokens.remove(search_word)
@@ -61,8 +105,9 @@ instruments = get_instrument_synsets()
 fulltext.dispersion_plot(list(instruments))
 # TODO: Define a custom list of music terms (instruments, production terms) and plot their frequencies. Grouping by rating with a grouped or stacked bar chart adds an extra layer.
 # TODO: TF-IDF Heatmap rating X music terms x freqency (Compute TF-IDF scores across reviews with sklearn's TfidfVectorizer, then plot a heatmap where rows are output_group bins and columns are your top music terms. This shows which terms are distinctively used in high vs. low-rated reviews, not just frequent ones.)
+# - TODO: ad wordclouds: TF-IDF weighting; Instead of raw frequency, weight each word by how distinctive it is to that rating group relative to the whole corpus. Words like "track" and "sound" appear everywhere so their IDF score will be low, naturally suppressing them.
+#         You'd compute TF-IDF with sklearn, then use the scores as the word weights passed to WordCloud(frequencies=...) instead of raw counts.
 # TODO: Plot mean rating by term: Violin/Box Plot of Scores by Term Presence OR Calculate the mean rating for reviews containing each term, plot as a dot with confidence intervals.
-
 # %%
 # circle shape for the wordcloud
 x, y = np.ogrid[:300, :300]
@@ -119,17 +164,19 @@ width, height = 1200, 600
 img = Image.new("L", (width, height), 255)  # white background
 draw = ImageDraw.Draw(img)
 
-# choose a font (adjust path as needed)
-font_path = font_manager.findfont("Bold")
-font = ImageFont.truetype(font_path, 400)
+# load Google font
+font_prop = load_google_font("Roboto", weight="black")
+
+# convert to PIL font
+font_path = font_manager.findfont(font_prop)
+font = ImageFont.truetype(font_path, size=300)   # set desired size
 
 # set mask to the shape of the input word(s)
 search_words = concordance_df['search_word'].unique()
 
-if len(search_words) == 1:
-    mask_word = search_words[0].upper()
-else:
-    mask_word = ", ".join(search_words).upper()
+mask_word = "".join(search_words).upper()
+mask_word = "\n".join(wrap(mask_word, 4))
+title_word = ", ".join(search_words).upper()
 
 # center text
 bbox = draw.textbbox((0, 0), mask_word, font=font)
@@ -150,7 +197,7 @@ wc.generate(" ".join(concordance_df["word"].dropna()))
 
 plt.axis("off")
 plt.imshow(wc, interpolation="bilinear")
-title = mask_word
+title = title_word
 plt.suptitle(title, fontsize=14)
 plt.show()
 # %%
