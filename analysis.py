@@ -5,6 +5,7 @@ import nltk
 import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
+from nltk.probability import FreqDist
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from wordcloud import WordCloud
@@ -12,6 +13,7 @@ from nltk.corpus import wordnet as wn
 from PIL import Image, ImageDraw, ImageFont
 from pyfonts import load_google_font
 from textwrap import wrap
+from collections import Counter
 
 # %% import processed data
 with open("/home/paul/fulltext.txt", "r", encoding="utf-8") as file:
@@ -23,10 +25,9 @@ tokens_df = pd.read_csv("/home/paul/tokens_df.csv")
 stop_words = set(stopwords.words('english'))
 punctuations = list(string.punctuation)
 punctuations.append("''")
-lemmatizer = WordNetLemmatizer()
 
 # %%
-# search for variations of "mixing"´
+# Concordance: search for variations of "mixing"´
 input_words = ["mixing", "the mix"]
 width = 7  # tokens of context either side
 
@@ -67,8 +68,8 @@ for i in match_indices:
     print(f"{left_str}  {match:<10}  {right_str}")
 
 # %%
-# search for co-occurance around a specific word
-fulltext.concordance("rattling")
+# Concordance: visualize one specific word
+# fulltext.concordance("rattling")
 search_word = "rattling"
 
 concordance_results = fulltext.concordance_list(search_word)
@@ -100,6 +101,17 @@ def get_instrument_synsets():
 
 instruments = get_instrument_synsets()
 
+# manually add production terms
+production_terms = {"mixing", "mastering", "mix", "master"}
+
+search_terms = instruments | production_terms
+
+# Count only tokens that are instruments
+musical_word_counts = Counter(
+    word for word in tokens_df["word"] if word in search_terms
+)
+
+# %%
 # Visualise top-used instruments
 fulltext.dispersion_plot(list(instruments))
 # TODO: Define a custom list of music terms (instruments, production terms) and plot their frequencies. Grouping by rating with a grouped or stacked bar chart adds an extra layer.
@@ -107,6 +119,8 @@ fulltext.dispersion_plot(list(instruments))
 # - TODO: ad wordclouds: TF-IDF weighting; Instead of raw frequency, weight each word by how distinctive it is to that rating group relative to the whole corpus. Words like "track" and "sound" appear everywhere so their IDF score will be low, naturally suppressing them.
 #         You'd compute TF-IDF with sklearn, then use the scores as the word weights passed to WordCloud(frequencies=...) instead of raw counts.
 # TODO: Plot mean rating by term: Violin/Box Plot of Scores by Term Presence OR Calculate the mean rating for reviews containing each term, plot as a dot with confidence intervals.
+
+
 # %%
 # circle shape for the wordcloud
 x, y = np.ogrid[:300, :300]
