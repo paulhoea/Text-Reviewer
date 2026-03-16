@@ -1,16 +1,18 @@
 # %%
 import pandas as pd
-import numpy as np
+# import numpy as np
 import nltk
 import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-import matplotlib.pyplot as plt
-from matplotlib import font_manager
-from wordcloud import WordCloud
-from nltk.corpus import wordnet as wn
-from PIL import Image, ImageDraw, ImageFont
-import re
+# import matplotlib.pyplot as plt
+# from matplotlib import font_manager
+# from wordcloud import WordCloud
+# from nltk.corpus import wordnet as wn
+# from PIL import Image, ImageDraw, ImageFont
+
+# unclear if needed
+#import re
 
 # read scraped data
 df = pd.read_csv("/home/paul/scraped_results.csv")

@@ -11,7 +11,6 @@ from wordcloud import WordCloud
 from nltk.corpus import wordnet as wn
 from PIL import Image, ImageDraw, ImageFont
 from pyfonts import load_google_font
-import re
 from textwrap import wrap
 
 # %% import processed data
