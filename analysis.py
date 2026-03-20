@@ -14,6 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 from pyfonts import load_google_font
 from textwrap import wrap
 from collections import Counter
+from sklearn.feature_extraction.text import TfidfVectorizer
+import seaborn as sns
 # if nessecary, path to nltk resources
 nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
 
@@ -110,11 +112,41 @@ production_terms = {"mixing", "mastering", "mix", "master", "mixed", "mastered",
 search_terms = instruments | production_terms
 
 # Count only tokens that are instruments
-musical_word_counts = Counter(
-    word for word in tokens_df["word"] if word in search_terms
-)
+# musical_word_counts = Counter(
+#     word for word in tokens_df["word"] if word in search_terms
+# )
 
 # %%
+
+musical_word_counts = (
+    tokens_df[tokens_df["word"].isin(search_terms)]
+    .groupby(["rating", "word"])
+    .size()
+    .reset_index(name="count")
+)
+
+pivot = musical_word_counts.pivot(index="word", columns="rating", values="count").fillna(0)
+
+# Total tokens per rating group (the denominator)
+total_words_by_rating = tokens_df.groupby("rating")["word"].count()
+
+# Divide each count by the total tokens in that rating
+pivot_normalized = pivot.div(total_words_by_rating, axis="columns")
+
+# sorts by most common
+pivot_normalized = pivot_normalized.loc[pivot_normalized.sum(axis=1).sort_values(ascending=False).index]
+
+# selects top 20
+pivot_normalized = pivot_normalized.iloc[0:20]
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(pivot_normalized, cmap="YlOrRd", linewidths=0.5)
+plt.title("Normalized Counts of Musical Terms")
+plt.xlabel("Rating")
+plt.ylabel("Term")
+plt.tight_layout()
+plt.show()
+
 # Visualise top-used instruments
 fulltext.dispersion_plot(list(instruments))
 # TODO: Define a custom list of music terms (instruments, production terms) and plot their frequencies. Grouping by rating with a grouped or stacked bar chart adds an extra layer.
@@ -122,6 +154,47 @@ fulltext.dispersion_plot(list(instruments))
 # - TODO: ad wordclouds: TF-IDF weighting; Instead of raw frequency, weight each word by how distinctive it is to that rating group relative to the whole corpus. Words like "track" and "sound" appear everywhere so their IDF score will be low, naturally suppressing them.
 #         You'd compute TF-IDF with sklearn, then use the scores as the word weights passed to WordCloud(frequencies=...) instead of raw counts.
 # TODO: Plot mean rating by term: Violin/Box Plot of Scores by Term Presence OR Calculate the mean rating for reviews containing each term, plot as a dot with confidence intervals.
+
+
+filtered_df = tokens_df[tokens_df['word'].isin(production_terms)]
+
+docs = (
+    filtered_df
+    .groupby('rating')['word']
+    .apply(' '.join)
+    .reset_index()
+)
+
+vectorizer = TfidfVectorizer(vocabulary=production_terms)
+tfidf_matrix = vectorizer.fit_transform(docs['word'])
+feature_names = vectorizer.get_feature_names_out()
+
+
+viz_df = pd.DataFrame(
+    tfidf_matrix.toarray(),
+    index=docs['rating'],
+    columns=feature_names
+)
+
+
+plt.figure(figsize=(12, 6))
+sns.heatmap(
+    viz_df,
+    annot=False, fmt=".2f",
+    cmap="YlOrRd",
+    linewidths=0.5,
+    cbar_kws={'label': 'TF-IDF Score'}
+)
+plt.title("TF-IDF Matrix — Selected Terms by Rating")
+plt.xlabel("Term")
+plt.ylabel("Rating")
+plt.tight_layout()
+plt.show()
+
+
+
+
+
 
 
 # %%
