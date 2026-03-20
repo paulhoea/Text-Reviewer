@@ -104,7 +104,8 @@ def get_instrument_synsets():
 instruments = get_instrument_synsets()
 
 # manually add production terms
-production_terms = {"mixing", "mastering", "mix", "master"}
+# source: https://routenote.com/blog/music-production-terms-a-glossary/
+production_terms = {"mixing", "mastering", "mix", "master", "mixed", "mastered", "clipping", "compression", "compress", "equalisation", "EQ", "reverb"}
 
 search_terms = instruments | production_terms
 
