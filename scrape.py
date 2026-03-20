@@ -94,5 +94,5 @@ output["rating_text"] = output["review_text"].str.findall(pattern, flags=re.IGNO
 output[output["rating"].isna() & (output["rating_text"].apply(len) == 0)]
 
 # %% save output
-output.to_csv("/home/paul/scraped_results.csv", index=False)
+output.to_csv("/home/paul/Documents/Text Reviewer/scraped_results.csv", index=False)
 # %%
