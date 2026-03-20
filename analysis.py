@@ -4,7 +4,7 @@ import numpy as np
 import nltk
 import string
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
+# from nltk.stem import WordNetLemmatizer
 from nltk.probability import FreqDist
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
@@ -14,12 +14,14 @@ from PIL import Image, ImageDraw, ImageFont
 from pyfonts import load_google_font
 from textwrap import wrap
 from collections import Counter
+# if nessecary, path to nltk resources
+nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
 
 # %% import processed data
-with open("/home/paul/fulltext.txt", "r", encoding="utf-8") as file:
+with open("/home/paul/Documents/Text Reviewer/fulltext.txt", "r", encoding="utf-8") as file:
         fulltext = file.read()
 fulltext = nltk.Text(nltk.word_tokenize(fulltext))
-tokens_df = pd.read_csv("/home/paul/tokens_df.csv")
+tokens_df = pd.read_csv("/home/paul/Documents/Text Reviewer/tokens_df.csv")
 
 # define stopwords and punctutation to remove
 stop_words = set(stopwords.words('english'))

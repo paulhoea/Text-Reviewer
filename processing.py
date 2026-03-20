@@ -57,7 +57,20 @@ fulltext = " ".join(df["review_text"].dropna())
 
 tokenized_reviews = list()
 
+def get_wordnet_pos(tag):
+    if tag.startswith('J'):
+        return 'a'
+    elif tag.startswith('V'):
+        return 'v'
+    elif tag.startswith('N'):
+        return 'n'
+    elif tag.startswith('R'):
+        return 'r'
+    else:
+        return 'n'
+
 for index, row in df.iterrows():
+    print(f"Processing row #{index}")
     tokens = nltk.wordpunct_tokenize(row["review_text"].lower()) # instead of word_tokenize, to keep things like "Internet's" from splitting
     
     # Build a set of lowercase words to remove from artist and album names
@@ -69,8 +82,10 @@ for index, row in df.iterrows():
     filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
     filtered_tokens = [word for word in filtered_tokens if word not in name_words]  # remove artist/album words
 
+    tagged_tokens = nltk.pos_tag(filtered_tokens)
+
     # ? Keep ? - splits the 's from things like "Internet's", test once I have more of a feel for it
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in filtered_tokens]
+    lemmatized_words = [lemmatizer.lemmatize(word, get_wordnet_pos(tag)) for word, tag in tagged_tokens]
 
     tmp_review_df = pd.DataFrame({'word': lemmatized_words, 'rating': row["rating"], 'source': row["links"]})
 
