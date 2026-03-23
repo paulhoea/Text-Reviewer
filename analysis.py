@@ -4,9 +4,9 @@ import numpy as np
 import nltk
 import string
 from nltk.corpus import stopwords
-# from nltk.stem import WordNetLemmatizer
 from nltk.probability import FreqDist
 import matplotlib.pyplot as plt
+import cv2
 from matplotlib import font_manager
 from wordcloud import WordCloud
 from nltk.corpus import wordnet as wn
@@ -39,29 +39,30 @@ width = 7  # tokens of context either side
 single_words = set(w.lower() for w in input_words if len(w.split()) == 1)
 phrases = [p.lower().split() for p in input_words if len(p.split()) > 1]
 
-tokens_lower = [t.lower() for t in fulltext.tokens]
+concordance_tokens = [t.lower() for t in fulltext.tokens]
 
 # Single word matches
-match_indices = [i for i, word in enumerate(tokens_lower)
+match_indices = [i for i, word in enumerate(concordance_tokens)
                  if word in single_words]
 
-# Phrase matches — index points to the first token of the phrase
+# Phrase matches
 for phrase in phrases:
     phrase_len = len(phrase)
-    for i in range(len(tokens_lower) - phrase_len + 1):
-        if tokens_lower[i:i+phrase_len] == phrase:
+    for i in range(len(concordance_tokens) - phrase_len + 1):
+        if concordance_tokens[i:i+phrase_len] == phrase:
             match_indices.append(i)
 
 match_indices = sorted(set(match_indices))
 
 # Print concordance-style output
+print(f"Concordance of {input_words}")
 print(f"{len(match_indices)} total results")
 print(f"{'LEFT CONTEXT':>50}  {'MATCH':<10}  {'RIGHT CONTEXT'}")
 print("-" * 80)
 for i in match_indices:
     # figure out how long the match is
     match_len = next(
-        (len(p) for p in phrases if tokens_lower[i:i+len(p)] == p), 1
+        (len(p) for p in phrases if concordance_tokens[i:i+len(p)] == p), 1
     )
     left = fulltext.tokens[max(0, i-width):i]
     match = ' '.join(fulltext.tokens[i:i+match_len])
@@ -73,7 +74,6 @@ for i in match_indices:
 
 # %%
 # Concordance: visualize one specific word
-# fulltext.concordance("rattling")
 search_word = "rattling"
 
 concordance_results = fulltext.concordance_list(search_word)
@@ -92,6 +92,84 @@ for result in concordance_results:
     concordance_tokens.append(pd.DataFrame({"word": filtered_tokens, "search_word": search_word}))
 
 concordance_df = pd.concat(concordance_tokens)
+
+# Prepare mask
+width, height = 1200, 800
+img_mask = Image.new("L", (width, height), 255)  # white background
+draw = ImageDraw.Draw(img_mask)
+
+# load Google font and convert to PIL font
+font_prop_mask = load_google_font("Google Sans Code", weight="extra-bold")
+font_path_mask = font_manager.findfont(font_prop_mask)
+font_mask = ImageFont.truetype(font_path_mask, size=300)   # set desired size
+
+# set mask to the shape of the input word(s)
+search_words = concordance_df['search_word'].unique()
+mask_word = "".join(search_words).upper()
+mask_word = "\n".join(wrap(mask_word, 4))
+# title_word = ", ".join(search_words).upper()
+
+# text placement calulation
+bbox = draw.textbbox((0, 0), mask_word, font=font_mask)
+text_w = bbox[2] - bbox[0]
+text_h = bbox[3] - bbox[1]
+x = (width - text_w) // 2
+y = (height - text_h) // 3
+
+# draw text, convert to mask, and invert
+draw.text((x, y), mask_word, fill=0, font=font_mask)
+text_mask = np.array(img_mask)
+inverted_mask = 255 - text_mask
+
+# create outline image as an underlay
+img_outline = Image.new("RGB", (width, height), color=(249, 242, 141))  # yellow background
+draw = ImageDraw.Draw(img_outline)
+
+# render outline image
+font_prop_outline = load_google_font("Google Sans Code", weight="medium")
+font_path_outline = font_manager.findfont(font_prop_outline)
+font_outline = ImageFont.truetype(font_path_outline, size=300)   # set desired size
+draw.text((x, y), mask_word, fill="white", font=font_outline)
+
+# calculate colour mapping
+frequencies = concordance_df["word"].dropna().value_counts().to_dict()
+sorted_words = sorted(frequencies, key=frequencies.get, reverse=True)
+rank = {w: i for i, w in enumerate(sorted_words)}
+max_rank = max(rank.values())
+
+c1 = np.array([59, 76, 192])    # blue
+c2 = np.array([255, 204, 0])    # orange
+c3 = np.array([237, 33, 0])     # red/purple
+
+def interpolate(ca, cb, t):
+    return (1 - t) * ca + t * cb
+
+def color_func(word, *args, **kwargs):
+    norm = rank[word] / max_rank if max_rank > 0 else 0
+
+    if norm < 0.5:
+        t = norm * 2
+        color = interpolate(c1, c2, t)
+    else:
+        t = (norm - 0.5) * 2
+        color = interpolate(c2, c3, t)
+
+    r, g, b = color.astype(int)
+    return f"rgb({r}, {g}, {b})"
+
+# generate wordcloud
+wc = WordCloud(
+    background_color="rgba(255, 255, 255, 0)", 
+    mode="RGBA", 
+    repeat=True, 
+    mask=inverted_mask, 
+    color_func=color_func)
+wc.generate_from_frequencies(frequencies)
+
+plt.imshow(img_outline, cmap='gray', vmin=0, vmax=255)
+plt.imshow(wc, interpolation="bilinear")
+plt.axis("off")
+plt.show()
 
 
 # %% find instruments in the text
@@ -239,53 +317,6 @@ for key, group_df in tokens_df.groupby("output_group"):
 
     plt.axis("off")
     plt.imshow(wc, interpolation="bilinear")
-    title = f"{group_df["output_group"].unique()[0]}/10"
+    title = f"Rating: {group_df["output_group"].unique()[0]}/10"
     plt.suptitle(title, fontsize=14)
     plt.show()
-
-
-
-
-# %%
-width, height = 1200, 600
-
-img = Image.new("L", (width, height), 255)  # white background
-draw = ImageDraw.Draw(img)
-
-# load Google font
-font_prop = load_google_font("Roboto", weight="black")
-
-# convert to PIL font
-font_path = font_manager.findfont(font_prop)
-font = ImageFont.truetype(font_path, size=300)   # set desired size
-
-# set mask to the shape of the input word(s)
-search_words = concordance_df['search_word'].unique()
-
-mask_word = "".join(search_words).upper()
-mask_word = "\n".join(wrap(mask_word, 4))
-title_word = ", ".join(search_words).upper()
-
-# center text
-bbox = draw.textbbox((0, 0), mask_word, font=font)
-text_w = bbox[2] - bbox[0]
-text_h = bbox[3] - bbox[1]
-
-x = (width - text_w) // 2
-y = (height - text_h) // 2
-
-# draw text in black
-draw.text((x, y), mask_word, fill=0, font=font)
-
-text_mask = np.array(img)
-
-# generate wordcloud for concordance_df
-wc = WordCloud(background_color="white", repeat=True, mask=text_mask)
-wc.generate(" ".join(concordance_df["word"].dropna()))
-
-plt.axis("off")
-plt.imshow(wc, interpolation="bilinear")
-title = title_word
-plt.suptitle(title, fontsize=14)
-plt.show()
-# %%
