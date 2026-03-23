@@ -24,6 +24,6 @@ Concordance wordclouds:
 
 The vocabulary of positive vs. negative reviews can be explored with rating group wordclouds:
 
-<img width="389" height="437" alt="wordcloud" src="https://github.com/user-attachments/assets/d583a9c1-29a6-4e1a-8714-6d8865d89131" />
+<img width="389" height="437" alt="wordcloud" src="https://github.com/user-attachments/assets/1ee0b5e1-5e11-4d7b-a7e8-4367e4c92ed6" />
 <img width="389" height="437" alt="wordcloud2" src="https://github.com/user-attachments/assets/e66a3c72-21b9-490f-ac78-e34bc073b375" />
 
