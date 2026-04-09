@@ -23,7 +23,7 @@ punctuations = list(string.punctuation)
 punctuations.append("''")
 
 # %%
-# Concordance: search for variations of "mixing"´
+# Concordance: search for variations of "mixing" or the word "rattling"
 # input_words = ["mixing", "the mix", "a mix of"]
 input_words = ["rattling"]
 width = 7  # tokens of context either side
@@ -95,35 +95,10 @@ for match_id, group in concordance_df.groupby("match_id"):
     # right_str = ' '.join(right) # turns filtered list from previous step to string
     # print(f"{left_str}  {match:<10}  {right_str}")
 
-
-
-
-
-
-
-
-
 # %%
-# Concordance: visualize one specific word as a wordcloud
-# search_word = "rattling"
+# Concordance: visualize searchwords as a wordcloud
 
-# concordance_results = fulltext.concordance_list(search_word)
-# concordance_tokens = []
-
-# for result in concordance_results:
-#     tokens = nltk.wordpunct_tokenize(result.line)
-
-#     # remove stopwords
-#     filtered_tokens = [word for word in tokens if word not in stop_words]
-#     filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
-
-#     # remove original search word
-#     filtered_tokens.remove(search_word)
-
-#     concordance_tokens.append(pd.DataFrame({"word": filtered_tokens, "search_word": search_word}))
-
-# concordance_df = pd.concat(concordance_tokens)
-
+# remove stopwords for visualisation
 concordance_df = concordance_df[
     ~concordance_df['word'].isin(stop_words) & 
     ~concordance_df['search_word'].isin(stop_words)
@@ -131,21 +106,46 @@ concordance_df = concordance_df[
 
 # Prepare mask
 width, height = 1200, 800
+padding_x, padding_y = 200, 50
 img_mask = Image.new("L", (width, height), 255)  # white background
 draw = ImageDraw.Draw(img_mask)
 
 # load Google font and convert to PIL font
 font_prop_mask = load_google_font("Google Sans Code", weight="extra-bold")
 font_path_mask = font_manager.findfont(font_prop_mask)
-font_mask = ImageFont.truetype(font_path_mask, size=300)   # set desired size
 
 # set mask to the shape of the input word(s)
 search_words = concordance_df['search_word'].unique()
-mask_word = "".join(search_words).upper()
-mask_word = "\n".join(wrap(mask_word, 4))
-# title_word = ", ".join(search_words).upper()
 
-# text placement calulation
+# set linebreaks, depending on whether it is a single word or multiple
+if len(search_words) > 1:
+    mask_word = "\n".join(search_words).upper()
+else:
+    mask_word = "".join(search_words)
+    mask_word = "\n".join(wrap(mask_word, 4)).upper()
+
+# Load font at an arbitrary reference size
+font_mask = ImageFont.truetype(font_path_mask, size=100) # arbitrary base size
+
+# TODO: from here to image_outline, difference to img_mask might have to move the bounding box/sizing calculation to have the first mask remain at the right size
+# Measure text size
+bbox = draw.textbbox((0, 0), mask_word, font=font_mask)
+measured_w = bbox[2] - bbox[0]
+measured_h = bbox[3] - bbox[1]
+
+# Compute scale factor for text to scale correctly
+scale = min(
+    (width - 2 * padding_x) / measured_w,
+    (height - 2 * padding_y) / measured_h
+)
+
+# determine correct font size
+font_size = int(100 * scale)
+
+# Reload font at correct size
+font_mask = ImageFont.truetype(font_path_mask, size=font_size)
+
+# Recalculate font dimensions and offsets
 bbox = draw.textbbox((0, 0), mask_word, font=font_mask)
 text_w = bbox[2] - bbox[0]
 text_h = bbox[3] - bbox[1]
@@ -153,7 +153,7 @@ x = (width - text_w) // 2
 y = (height - text_h) // 3
 
 # draw text, convert to mask, and invert
-draw.text((x, y), mask_word, fill=0, font=font_mask)
+draw.text((x, y), mask_word, fill=0, font=font_mask, align="center")
 text_mask = np.array(img_mask)
 inverted_mask = 255 - text_mask
 
@@ -164,8 +164,8 @@ draw = ImageDraw.Draw(img_outline)
 # render outline image
 font_prop_outline = load_google_font("Google Sans Code", weight="medium")
 font_path_outline = font_manager.findfont(font_prop_outline)
-font_outline = ImageFont.truetype(font_path_outline, size=300)   # set desired size
-draw.text((x, y), mask_word, fill="white", font=font_outline)
+font_outline = ImageFont.truetype(font_path_outline, size=font_size)
+draw.text((x, y), mask_word, fill="white", font=font_outline, align="center")
 
 # calculate colour mapping
 frequencies = concordance_df["word"].dropna().value_counts().to_dict()

@@ -76,10 +76,11 @@ for index, row in df.iterrows():
     #filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
     filtered_tokens = [word for word in filtered_tokens if word not in name_words]  # remove artist/album words
 
+    # POS (part-of-speech) tagging
     tagged_tokens = nltk.pos_tag(filtered_tokens)
-
     tagged_tokens = pd.DataFrame(tagged_tokens, columns=["word", "pos"])
 
+    # complete data frame with review-specific info
     tagged_tokens["rating"] = row["rating"]
     tagged_tokens["source"] = row["links"]
 
@@ -87,7 +88,7 @@ for index, row in df.iterrows():
 
 tokens_df = pd.concat(tokenized_reviews)
 
-# %%
+# %% export
 tokens_df.to_csv("/home/paul/Documents/Text Reviewer/tokens_df.csv", index=False)
 with open("/home/paul/Documents/Text Reviewer/fulltext.txt", "w") as text_file:
     text_file.write(fulltext)
