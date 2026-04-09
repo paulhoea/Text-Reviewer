@@ -16,6 +16,7 @@ from textwrap import wrap
 from collections import Counter
 from sklearn.feature_extraction.text import TfidfVectorizer
 import seaborn as sns
+import matplotlib.gridspec as gridspec
 # if nessecary, path to nltk resources
 nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
 
@@ -30,68 +31,112 @@ stop_words = set(stopwords.words('english'))
 punctuations = list(string.punctuation)
 punctuations.append("''")
 
+
+
+
+
+
 # %%
 # Concordance: search for variations of "mixing"´
-input_words = ["mixing", "the mix"]
+# input_words = ["mixing", "the mix", "a mix of"]
+input_words = ["rattling"]
 width = 7  # tokens of context either side
 
-# Find indices of matching tokens
+# split the input words into words or phrases, as these need separate scanning
 single_words = set(w.lower() for w in input_words if len(w.split()) == 1)
 phrases = [p.lower().split() for p in input_words if len(p.split()) > 1]
 
-concordance_tokens = [t.lower() for t in fulltext.tokens]
+# extract tokens from the larger DF for performance reasons
+tokens_list = tokens_df.word.tolist()
 
-# Single word matches
-match_indices = [i for i, word in enumerate(concordance_tokens)
+# Single word matches, returns the index of the match
+match_indices = [i for i, word in enumerate(tokens_list)
                  if word in single_words]
 
-# Phrase matches
+# Phrase matches, with shifted indices so that the multi-word phrase works in the display
 for phrase in phrases:
     phrase_len = len(phrase)
-    for i in range(len(concordance_tokens) - phrase_len + 1):
-        if concordance_tokens[i:i+phrase_len] == phrase:
+    for i in range(len(tokens_list) - phrase_len + 1):
+        if list(tokens_list[i:i+phrase_len]) == phrase:
             match_indices.append(i)
 
 match_indices = sorted(set(match_indices))
 
-# Print concordance-style output
+# create results dataframe
+results_list = []
+
+for idx, i in enumerate(match_indices):
+    match_len = next(
+        (len(p) for p in phrases if tokens_list[i:i+len(p)] == p), 1
+    )
+
+    # filter out context from surrounding tokens; total line length is width * 2 + match_length
+    left = tokens_list[max(0, i-width):i] # list
+    match = ' '.join(tokens_list[i:i+match_len]) # string
+    right = tokens_list[i+match_len:i+match_len+width] # list
+
+    # iterate over each word in left + right
+    for word in left + right:
+        results_list.append({
+            "match_id": idx,
+            "word": word,
+            "search_word": match
+        })
+
+concordance_df = pd.DataFrame(results_list)
+
+# Print concordance output
 print(f"Concordance of {input_words}")
 print(f"{len(match_indices)} total results")
 print(f"{'LEFT CONTEXT':>50}  {'MATCH':<10}  {'RIGHT CONTEXT'}")
 print("-" * 80)
-for i in match_indices:
-    # figure out how long the match is
-    match_len = next(
-        (len(p) for p in phrases if concordance_tokens[i:i+len(p)] == p), 1
-    )
-    left = fulltext.tokens[max(0, i-width):i]
-    match = ' '.join(fulltext.tokens[i:i+match_len])
-    right = fulltext.tokens[i+match_len:i+match_len+width]
-    
+# ----
+for match_id, group in concordance_df.groupby("match_id"):
+    words = group["word"].tolist()
+    match = group["search_word"].iloc[0]
+
+    # split into left/right using width; the first (width) words in the column are left, the ones after are right of the search term. Results in a total of (width) * 2 + match_len words being displayed
+    left = words[:width]
+    right = words[width:]
+
     left_str = ' '.join(left).rjust(50)
     right_str = ' '.join(right)
+
     print(f"{left_str}  {match:<10}  {right_str}")
 
+    # create and print strings for the display
+    # left_str = ' '.join(left).rjust(50) # turns filtered list from previous step to string
+    # right_str = ' '.join(right) # turns filtered list from previous step to string
+    # print(f"{left_str}  {match:<10}  {right_str}")
+
+
+
+
+
+
+
+
+
 # %%
-# Concordance: visualize one specific word
-search_word = "rattling"
+# Concordance: visualize one specific word as a wordcloud
+# search_word = "rattling"
 
-concordance_results = fulltext.concordance_list(search_word)
-concordance_tokens = []
+# concordance_results = fulltext.concordance_list(search_word)
+# concordance_tokens = []
 
-for result in concordance_results:
-    tokens = nltk.wordpunct_tokenize(result.line)
+# for result in concordance_results:
+#     tokens = nltk.wordpunct_tokenize(result.line)
 
-    # remove stopwords
-    filtered_tokens = [word for word in tokens if word not in stop_words]
-    filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
+#     # remove stopwords
+#     filtered_tokens = [word for word in tokens if word not in stop_words]
+#     filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
 
-    # remove original search word
-    filtered_tokens.remove(search_word)
+#     # remove original search word
+#     filtered_tokens.remove(search_word)
 
-    concordance_tokens.append(pd.DataFrame({"word": filtered_tokens, "search_word": search_word}))
+#     concordance_tokens.append(pd.DataFrame({"word": filtered_tokens, "search_word": search_word}))
 
-concordance_df = pd.concat(concordance_tokens)
+# concordance_df = pd.concat(concordance_tokens)
 
 # Prepare mask
 width, height = 1200, 800
@@ -171,6 +216,74 @@ plt.imshow(wc, interpolation="bilinear")
 plt.axis("off")
 plt.show()
 
+
+# %%
+# new search method, manual filtering with informed filters
+tokens_df["prev_word"] = tokens_df.shift(1)["word"]
+tokens_df["prev_pos"] = tokens_df.shift(1)["pos"]
+tokens_df["next_word"] = tokens_df.shift(-1)["word"]
+tokens_df["next_pos"] = tokens_df.shift(-1)["pos"]
+
+tokens_df[tokens_df["word"].str.contains("mix")]
+
+target_df = tokens_df[tokens_df["word"].str.contains("mix", na=False)].copy()
+
+target_df["prev_pos_word"] = target_df["prev_pos"] + ", " + target_df["prev_word"] + " + " + target_df["pos"] +  ", " + target_df["word"]
+
+prev_word_counts = (
+    target_df["prev_word"]
+    .dropna()
+    .value_counts()
+    .head(50)
+    .sort_values()  # ascending so top rank is at the top of horizontal bar
+)
+
+prev_combo_counts = (
+    target_df["prev_pos_word"]
+    .dropna()
+    .value_counts()
+    .head(50)
+    .sort_values()
+)
+
+fig = plt.figure(figsize=(14, 10))
+fig.suptitle('Preceding Context of words containing "mix"', fontsize=15, fontweight="bold", y=1.01)
+gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.6)
+
+# Color palette
+color_word = "#4C72B0"
+color_combo = "#DD8452"
+
+# -- Left: prev_word --
+ax1 = fig.add_subplot(gs[0])
+bars1 = ax1.barh(prev_word_counts.index, prev_word_counts.values, color=color_word, edgecolor="white", linewidth=0.5)
+ax1.set_title("Preceding Word", fontsize=13, fontweight="bold", pad=10)
+ax1.set_xlabel("Count", fontsize=11)
+ax1.set_ylabel("prev_word", fontsize=11)
+ax1.bar_label(bars1, padding=3, fontsize=9)
+ax1.spines[["top", "right"]].set_visible(False)
+ax1.tick_params(axis="y", labelsize=9)
+
+# -- Right: prev_pos + prev_word --
+ax2 = fig.add_subplot(gs[1])
+bars2 = ax2.barh(prev_combo_counts.index, prev_combo_counts.values, color=color_combo, edgecolor="white", linewidth=0.5)
+ax2.set_title("Preceding POS + Word", fontsize=13, fontweight="bold", pad=10)
+ax2.set_xlabel("Count", fontsize=11)
+ax2.set_ylabel("prev_pos + prev_word", fontsize=11)
+ax2.bar_label(bars2, padding=3, fontsize=9)
+ax2.spines[["top", "right"]].set_visible(False)
+ax2.tick_params(axis="y", labelsize=9)
+
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+
+
+# manually? "song", "dense", "vocal", "dip", "vocal", "sound", "distortion", "sound", "master", "good", "bad", "clarity", "mastering", "track", "EQ", "eqed", "vocal", "track", "vocal" 37537
 
 # %% find instruments in the text
 def get_instrument_synsets():

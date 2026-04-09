@@ -1,20 +1,10 @@
 # %%
 import pandas as pd
-# import numpy as np
 import nltk
 import string
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
-# import matplotlib.pyplot as plt
-# from matplotlib import font_manager
-# from wordcloud import WordCloud
-# from nltk.corpus import wordnet as wn
-# from PIL import Image, ImageDraw, ImageFont
-# if nessecary, path to nltk resources
 nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
-
-# unclear if needed
-#import re
 
 # read scraped data
 df = pd.read_csv("/home/paul/Documents/Text Reviewer/scraped_results.csv")
@@ -22,10 +12,10 @@ df["rating"] = df["rating"].str.split("/").str[0]
 df["rating"] = pd.to_numeric(df["rating"]).astype('Int64')
 
 # define stopwords and punctutation to remove
-stop_words = set(stopwords.words('english'))
+# stop_words = set(stopwords.words('english'))
 punctuations = list(string.punctuation)
 punctuations.append("''")
-lemmatizer = WordNetLemmatizer()
+# lemmatizer = WordNetLemmatizer()
 
 
 # %% 
@@ -80,24 +70,29 @@ for index, row in df.iterrows():
     album_words = set(nltk.wordpunct_tokenize(str(row["album"]).lower()))
     name_words = artist_words | album_words
 
-    filtered_tokens = [word for word in tokens if word not in stop_words]
-    filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
+    #filtered_tokens = [word for word in tokens if word not in stop_words]
+    filtered_tokens = [word for word in tokens if word not in punctuations]
+
+    #filtered_tokens = [word for word in filtered_tokens if word not in punctuations]
     filtered_tokens = [word for word in filtered_tokens if word not in name_words]  # remove artist/album words
 
     tagged_tokens = nltk.pos_tag(filtered_tokens)
 
     # ? Keep ? - splits the 's from things like "Internet's", test once I have more of a feel for it
-    lemmatized_words = pd.DataFrame(
-        [(lemmatizer.lemmatize(word, get_wordnet_pos(tag)), tag) for word, tag in tagged_tokens],
-        columns=["word", "pos"]
-        )
+    # lemmatized_words = pd.DataFrame(
+    #     [(lemmatizer.lemmatize(word, get_wordnet_pos(tag)), tag) for word, tag in tagged_tokens],
+    #     columns=["word", "pos"]
+    #     )
 
-    lemmatized_words["rating"] = row["rating"]
-    lemmatized_words["source"] = row["links"]
+    # lemmatized_words["rating"] = row["rating"]
+    # lemmatized_words["source"] = row["links"]
 
     #tmp_review_df = pd.DataFrame({'word': lemmatized_words["word"], 'pos': lemmatized_words["pos"], 'rating': row["rating"], 'source': row["links"]})
 
-    tokenized_reviews.append(lemmatized_words)
+    # tokenized_reviews.append(lemmatized_words)
+
+    tagged_tokens = pd.DataFrame(tagged_tokens, columns=["word", "pos"])
+    tokenized_reviews.append(tagged_tokens)
 
 tokens_df = pd.concat(tokenized_reviews)
 
