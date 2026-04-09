@@ -1,4 +1,23 @@
 # %%
+import pandas as pd
+import numpy as np
+import nltk
+import string
+from nltk.corpus import stopwords
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+# if nessecary, path to nltk resources
+nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
+
+# %% import processed data
+tokens_df = pd.read_csv("/home/paul/Documents/Text Reviewer/tokens_df.csv")
+
+# define stopwords and punctutation to remove
+stop_words = set(stopwords.words('english'))
+punctuations = list(string.punctuation)
+punctuations.append("''")
+
+# %%
 # circle shape for the wordcloud
 x, y = np.ogrid[:300, :300]
 mask = (x - 150) ** 2 + (y - 150) ** 2 > 130 ** 2
@@ -44,3 +63,5 @@ for key, group_df in tokens_df.groupby("output_group"):
     title = f"Rating: {group_df["output_group"].unique()[0]}/10"
     plt.suptitle(title, fontsize=14)
     plt.show()
+
+# %%

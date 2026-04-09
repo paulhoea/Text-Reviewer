@@ -4,26 +4,17 @@ import numpy as np
 import nltk
 import string
 from nltk.corpus import stopwords
-from nltk.probability import FreqDist
 import matplotlib.pyplot as plt
-import cv2
 from matplotlib import font_manager
 from wordcloud import WordCloud
-from nltk.corpus import wordnet as wn
 from PIL import Image, ImageDraw, ImageFont
 from pyfonts import load_google_font
 from textwrap import wrap
-from collections import Counter
-from sklearn.feature_extraction.text import TfidfVectorizer
-import seaborn as sns
-import matplotlib.gridspec as gridspec
+
 # if nessecary, path to nltk resources
 nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
 
 # %% import processed data
-with open("/home/paul/Documents/Text Reviewer/fulltext.txt", "r", encoding="utf-8") as file:
-        fulltext = file.read()
-fulltext = nltk.Text(nltk.word_tokenize(fulltext))
 tokens_df = pd.read_csv("/home/paul/Documents/Text Reviewer/tokens_df.csv")
 
 # define stopwords and punctutation to remove
@@ -133,10 +124,10 @@ for match_id, group in concordance_df.groupby("match_id"):
 
 # concordance_df = pd.concat(concordance_tokens)
 
-concordance_df
-
-concordance_df = [word for word in concordance_df if word not in stop_words]
-concordance_df = [word for word in concordance_df if word not in punctuations]
+concordance_df = concordance_df[
+    ~concordance_df['word'].isin(stop_words) & 
+    ~concordance_df['search_word'].isin(stop_words)
+]
 
 # Prepare mask
 width, height = 1200, 800
@@ -215,3 +206,5 @@ plt.imshow(img_outline, cmap='gray', vmin=0, vmax=255)
 plt.imshow(wc, interpolation="bilinear")
 plt.axis("off")
 plt.show()
+
+# %%

@@ -1,4 +1,53 @@
 # %%
+import pandas as pd
+import numpy as np
+import nltk
+import string
+from nltk.corpus import stopwords
+#from nltk.probability import FreqDist
+import matplotlib.pyplot as plt
+#import cv2
+#from matplotlib import font_manager
+#from wordcloud import WordCloud
+from nltk.corpus import wordnet as wn
+#from PIL import Image, ImageDraw, ImageFont
+#from pyfonts import load_google_font
+#from textwrap import wrap
+from collections import Counter
+from sklearn.feature_extraction.text import TfidfVectorizer
+import seaborn as sns
+import matplotlib.gridspec as gridspec
+# if nessecary, path to nltk resources
+nltk.data.path.append("/home/paul/Documents/Python Share/nltk_data")
+
+# %% import processed data
+with open("/home/paul/Documents/Text Reviewer/fulltext.txt", "r", encoding="utf-8") as file:
+        fulltext = file.read()
+fulltext = nltk.Text(nltk.word_tokenize(fulltext))
+tokens_df = pd.read_csv("/home/paul/Documents/Text Reviewer/tokens_df.csv")
+
+# define stopwords and punctutation to remove
+stop_words = set(stopwords.words('english'))
+punctuations = list(string.punctuation)
+punctuations.append("''")
+
+
+# TODO: re-integrate
+# ? Keep ? - splits the 's from things like "Internet's", test once I have more of a feel for it
+    # lemmatized_words = pd.DataFrame(
+    #     [(lemmatizer.lemmatize(word, get_wordnet_pos(tag)), tag) for word, tag in tagged_tokens],
+    #     columns=["word", "pos"]
+    #     )
+
+    # lemmatized_words["rating"] = row["rating"]
+    # lemmatized_words["source"] = row["links"]
+
+    #tmp_review_df = pd.DataFrame({'word': lemmatized_words["word"], 'pos': lemmatized_words["pos"], 'rating': row["rating"], 'source': row["links"]})
+
+    # tokenized_reviews.append(lemmatized_words)
+
+
+# %%
 # new search method, manual filtering with informed filters
 tokens_df["prev_word"] = tokens_df.shift(1)["word"]
 tokens_df["prev_pos"] = tokens_df.shift(1)["pos"]
@@ -162,3 +211,4 @@ plt.ylabel("Rating")
 plt.tight_layout()
 plt.show()
 
+# %%

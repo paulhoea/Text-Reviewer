@@ -78,20 +78,11 @@ for index, row in df.iterrows():
 
     tagged_tokens = nltk.pos_tag(filtered_tokens)
 
-    # ? Keep ? - splits the 's from things like "Internet's", test once I have more of a feel for it
-    # lemmatized_words = pd.DataFrame(
-    #     [(lemmatizer.lemmatize(word, get_wordnet_pos(tag)), tag) for word, tag in tagged_tokens],
-    #     columns=["word", "pos"]
-    #     )
-
-    # lemmatized_words["rating"] = row["rating"]
-    # lemmatized_words["source"] = row["links"]
-
-    #tmp_review_df = pd.DataFrame({'word': lemmatized_words["word"], 'pos': lemmatized_words["pos"], 'rating': row["rating"], 'source': row["links"]})
-
-    # tokenized_reviews.append(lemmatized_words)
-
     tagged_tokens = pd.DataFrame(tagged_tokens, columns=["word", "pos"])
+
+    tagged_tokens["rating"] = row["rating"]
+    tagged_tokens["source"] = row["links"]
+
     tokenized_reviews.append(tagged_tokens)
 
 tokens_df = pd.concat(tokenized_reviews)
